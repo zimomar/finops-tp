@@ -130,7 +130,7 @@ resource "aws_ecs_task_definition" "request-wordpress-task" {
       name                        = "request-wordpress"
       image                       = var.request-wordpress-image-uri
       cpu                         = 512
-      memory                      = 2048
+      memory                      = 1024
       logConfiguration            = {
         logDriver                 = "awslogs"
         options                   = {
@@ -210,7 +210,7 @@ resource "aws_launch_configuration" "ecs_common_launch_configuration" {
   name_prefix                   = "request-common-lc"
   associate_public_ip_address   = false
   image_id                      = var.ecs-instance-ami
-  instance_type                 = "t2.medium"
+  instance_type                 = "t2.micro"
   key_name                      = var.key-name
   iam_instance_profile          = aws_iam_instance_profile.ecs_profile.name
   security_groups               = [aws_security_group.ec2_sg.id]
@@ -219,3 +219,31 @@ resource "aws_launch_configuration" "ecs_common_launch_configuration" {
     create_before_destroy       = true
   }
 }
+
+######### RDS #########
+resource "aws_db_instance" "request-mysql" {
+  lifecycle {
+    ignore_changes = [password]
+  }
+  instance_class                = "db.t3.micro"
+  engine                        = "mysql"
+  engine_version                = "5.0.15"
+  vpc_security_group_ids        = [var.mysql-sg-id]
+  db_subnet_group_name          = aws_db_subnet_group.request-mysql-subnet-group.name
+  publicly_accessible           = false
+  identifier                    = "request-mysql"
+  db_name                       = "request_mysql"
+  allocated_storage             = 20
+  backup_retention_period       = 7
+  deletion_protection           = false
+  backup_window                 = "02:00-03:00"
+  maintenance_window            = "Sun:03:00-Sun:04:00"
+  username                      = var.request-mysql-master-username
+  password                      = var.request-mysql-master-password
+  skip_final_snapshot           = true
+}
+
+resource "aws_db_subnet_group" "request-mysql-subnet-group" {
+  subnet_ids                    = [aws_subnet.request-private-sn-subnet.id]
+}
+#######################
